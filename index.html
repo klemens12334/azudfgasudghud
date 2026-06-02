@@ -1,11 +1,326 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-   <meta charset="utf-8">
-   <title>My HTML5 Page</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spind-Leihsystem – Wilhelm-Gymnasium Braunschweig</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:#f0f4f8;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.container{
+    width:90%;
+    max-width:600px;
+    background:white;
+    padding:35px;
+    border-radius:15px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+}
+
+.logo {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+h1{
+    text-align:center;
+    color:#003366;
+    margin-bottom:10px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#666;
+    margin-bottom:25px;
+}
+
+label{
+    display:block;
+    margin-top:15px;
+    margin-bottom:5px;
+    font-weight:bold;
+}
+
+.date-group {
+    display: flex;
+    gap: 15px;
+}
+
+.date-field {
+    flex: 1;
+}
+
+input{
+    width:100%;
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:8px;
+}
+
+button{
+    width:100%;
+    padding:14px;
+    margin-top:20px;
+    border:none;
+    border-radius:8px;
+    background:#0056b3;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#003f88;
+}
+
+.hidden{
+    display:none;
+}
+
+.success-box{
+    background:#e8f5e9;
+    border-left:5px solid #4caf50;
+    padding:20px;
+    border-radius:8px;
+    margin-top:20px;
+}
+
+.info-box{
+    background:#fff3cd;
+    border-left:5px solid #ffc107;
+    padding:15px;
+    border-radius:8px;
+    margin-top:20px;
+}
+
+.spind{
+    font-size:24px;
+    font-weight:bold;
+    color:#003366;
+    margin-top:10px;
+}
+
+.pin{
+    font-size:30px;
+    font-weight:bold;
+    color:#008000;
+    letter-spacing:3px;
+    margin-top:10px;
+}
+
+ul{
+    margin-top:10px;
+    margin-left:20px;
+}
+
+footer{
+    margin-top:25px;
+    text-align:center;
+    color:#888;
+    font-size:12px;
+}
+</style>
 </head>
+
 <body>
-   <h1>Welcome to HTML5</h1>
-   <p>This page uses the correct HTML5 doctype.</p>
+
+<!-- LOGIN -->
+<div class="container" id="loginPage">
+
+    <div class="logo">
+        <img src="https://wilhelm-gym.de/wp-content/uploads/2018/06/wglogo_transparent.png" width="183" height="66">
+    </div>
+
+    <h1>Wilhelm-Gymnasium Braunschweig</h1>
+    <p class="subtitle">Spind-Leihsystem</p>
+
+    <label>Benutzername oder E-Mail</label>
+    <input type="text" placeholder="Benutzername">
+
+    <label>Passwort</label>
+    <input type="password" placeholder="Passwort">
+
+    <button onclick="login()">Anmelden</button>
+</div>
+
+<!-- BOOKING -->
+<div class="container hidden" id="bookingPage">
+
+    <h1>Spind reservieren</h1>
+
+    <p class="subtitle">
+        Bitte Zeitraum auswählen.<br>
+        <strong>Preis: 0,50 € pro Tag</strong>
+    </p>
+
+    <div class="info-box">
+        <strong>Preisliste:</strong>
+        <ul>
+            <li>0,50 € pro Tag</li>
+        </ul>
+    </div>
+
+    <div class="date-group">
+        <div class="date-field">
+            <label>Startdatum</label>
+            <input type="date" id="startDate" onchange="updateEndLimit()">
+        </div>
+        <div class="date-field">
+            <label>Enddatum</label>
+            <input type="date" id="endDate">
+        </div>
+    </div>
+
+    <button onclick="reserveLocker()">Spind reservieren</button>
+</div>
+
+<!-- RESULT -->
+<div class="container hidden" id="resultPage">
+
+    <h1>Reservierung erfolgreich</h1>
+
+    <div class="success-box">
+
+        <p>Ihr Spind wurde erfolgreich reserviert.</p>
+
+        <div class="spind">
+            Spindnummer: <span id="lockerNumber"></span>
+        </div>
+
+        <div class="pin">
+            PIN: <span id="lockerPin"></span>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <strong>Buchungsdetails:</strong>
+        <ul>
+            <li>Gesamte Laufzeit: <span id="totalDays"></span> Tage</li>
+            <li>Gesamtpreis: <span id="totalPrice"></span> €</li>
+        </ul>
+    </div>
+
+    <p style="margin-top:20px;">
+        Reservierungszeitraum:
+        <strong id="reservedPeriod"></strong>
+    </p>
+
+    <button onclick="logout()">Abmelden</button>
+
+    <footer>
+        Wilhelm-Gymnasium Braunschweig – Spindverwaltung
+    </footer>
+</div>
+
+<script>
+
+let maxDateString = "";
+
+window.onload = function() {
+    let today = new Date();
+
+    let yyyy = today.getFullYear();
+    let mm = String(today.getMonth() + 1).padStart(2, '0');
+    let dd = String(today.getDate()).padStart(2, '0');
+
+    let minDateString = yyyy + '-' + mm + '-' + dd;
+    maxDateString = (yyyy + 2) + '-' + mm + '-' + dd;
+
+    document.getElementById("startDate").min = minDateString;
+    document.getElementById("startDate").max = maxDateString;
+
+    document.getElementById("endDate").min = minDateString;
+    document.getElementById("endDate").max = maxDateString;
+};
+
+function updateEndLimit() {
+    let startDate = document.getElementById("startDate").value;
+    document.getElementById("endDate").min = startDate;
+}
+
+function login() {
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("bookingPage").classList.remove("hidden");
+}
+
+function reserveLocker() {
+
+    let startDateStr = document.getElementById("startDate").value;
+    let endDateStr = document.getElementById("endDate").value;
+
+    if (!startDateStr || !endDateStr) {
+        alert("Bitte beide Daten auswählen.");
+        return;
+    }
+
+    let start = new Date(startDateStr);
+    let end = new Date(endDateStr);
+    let today = new Date();
+    let maxAllowed = new Date(maxDateString);
+
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+    today.setHours(0,0,0,0);
+    maxAllowed.setHours(0,0,0,0);
+
+    if (start < today || end < today) {
+        alert("Keine Vergangenheit erlaubt.");
+        return;
+    }
+
+    if (start > maxAllowed || end > maxAllowed) {
+        alert("Maximal 2 Jahre erlaubt.");
+        return;
+    }
+
+    if (end < start) {
+        alert("Enddatum falsch.");
+        return;
+    }
+
+    // Tage berechnen
+    let diff = end - start;
+    let days = Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+
+    // Preis
+    let totalPrice = (days * 0.5).toFixed(2);
+
+    // Zufall
+    let lockerNumber = Math.floor(Math.random() * 20) + 1;
+    let lockerPin = Math.floor(1000 + Math.random() * 9000);
+
+    // Ausgabe
+    document.getElementById("lockerNumber").innerText = lockerNumber;
+    document.getElementById("lockerPin").innerText = lockerPin;
+
+    document.getElementById("reservedPeriod").innerText =
+        startDateStr + " bis " + endDateStr;
+
+    document.getElementById("totalDays").innerText = days;
+    document.getElementById("totalPrice").innerText = totalPrice;
+
+    document.getElementById("bookingPage").classList.add("hidden");
+    document.getElementById("resultPage").classList.remove("hidden");
+}
+
+function logout() {
+    location.reload();
+}
+
+</script>
+
 </body>
 </html>
