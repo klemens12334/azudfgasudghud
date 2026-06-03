@@ -39,6 +39,7 @@ h1{
     text-align:center;
     color:#003366;
     margin-bottom:10px;
+    font-size: 24px;
 }
 
 .subtitle{
@@ -68,6 +69,7 @@ input{
     padding:12px;
     border:1px solid #ccc;
     border-radius:8px;
+    font-size: 14px;
 }
 
 button{
@@ -80,6 +82,8 @@ button{
     color:white;
     font-size:16px;
     cursor:pointer;
+    font-weight: bold;
+    transition: background 0.2s;
 }
 
 button:hover{
@@ -106,6 +110,14 @@ button:hover{
     margin-top:20px;
 }
 
+.price-preview-box {
+    background:#e3f2fd;
+    border-left:5px solid #2196f3;
+    padding:15px;
+    border-radius:8px;
+    margin-top:20px;
+}
+
 .spind{
     font-size:24px;
     font-weight:bold;
@@ -122,7 +134,7 @@ button:hover{
 }
 
 ul{
-    margin-top:10px;
+    margin-top:5px;
     margin-left:20px;
 }
 
@@ -137,72 +149,64 @@ footer{
 
 <body>
 
-<!-- LOGIN -->
 <div class="container" id="loginPage">
-
     <div class="logo">
-        <img src="https://wilhelm-gym.de/wp-content/uploads/2018/06/wglogo_transparent.png" width="183" height="66">
+        <img src="https://wilhelm-gym.de/wp-content/uploads/2018/06/wglogo_transparent.png" alt="WG Logo" width="183" height="66">
     </div>
 
     <h1>Wilhelm-Gymnasium Braunschweig</h1>
     <p class="subtitle">Spind-Leihsystem</p>
 
-    <label>Benutzername oder E-Mail</label>
-    <input type="text" placeholder="Benutzername">
+    <label for="username">Benutzername oder E-Mail</label>
+    <input type="text" id="username" placeholder="Benutzername" required>
 
-    <label>Passwort</label>
-    <input type="password" placeholder="Passwort">
+    <label for="password">Passwort</label>
+    <input type="password" id="password" placeholder="Passwort" required>
 
     <button onclick="login()">Anmelden</button>
 </div>
 
-<!-- BOOKING -->
 <div class="container hidden" id="bookingPage">
-
     <h1>Spind reservieren</h1>
-
-    <p class="subtitle">
-        Bitte Zeitraum auswählen.<br>
-        <strong>Preis: 0,50 € pro Tag</strong>
-    </p>
+    <p class="subtitle">Bitte Zeitraum auswählen.</p>
 
     <div class="info-box">
-        <strong>Preisliste:</strong>
+        <strong>Konditionen:</strong>
         <ul>
             <li>0,50 € pro Tag</li>
+            <li>Maximale Mietdauer: 2 Jahre</li>
         </ul>
     </div>
 
     <div class="date-group">
         <div class="date-field">
-            <label>Startdatum</label>
-            <input type="date" id="startDate" onchange="updateEndLimit()">
+            <label for="startDate">Startdatum</label>
+            <input type="date" id="startDate" onchange="updateDateLimits()">
         </div>
         <div class="date-field">
-            <label>Enddatum</label>
-            <input type="date" id="endDate">
+            <label for="endDate">Enddatum</label>
+            <input type="date" id="endDate" onchange="calculateLivePrice()">
         </div>
     </div>
 
-    <button onclick="reserveLocker()">Spind reservieren</button>
+    <div id="pricePreview" class="price-preview-box hidden">
+        <strong> Preis:</strong>
+        <ul>
+            <li>Dauer: <span id="previewDays">0</span> Tage</li>
+            <li>Gesamtbetrag: <strong><span id="previewPrice">0,00</span> €</strong></li>
+        </ul>
+    </div>
+
+    <button onclick="reserveLocker()">Spind für den gewählten Zeitraum reservieren</button>
 </div>
 
-<!-- RESULT -->
 <div class="container hidden" id="resultPage">
-
     <h1>Reservierung erfolgreich</h1>
 
     <div class="success-box">
-
         <p>Ihr Spind wurde erfolgreich reserviert.</p>
-
-        <div class="spind">
-            Spindnummer: <span id="lockerNumber"></span>
-        </div>
-
-        <div class="pin">
-            PIN: <span id="lockerPin"></span>
-        </div>
+        <div class="spind">Spindnummer: <span id="lockerNumber"></span></div>
+        <div class="pin">PIN: <span id="lockerPin"></span></div>
     </div>
 
     <div class="info-box">
@@ -214,7 +218,7 @@ footer{
     </div>
 
     <p style="margin-top:20px;">
-        Reservierungszeitraum:
+        Reservierungszeitraum:<br>
         <strong id="reservedPeriod"></strong>
     </p>
 
@@ -226,12 +230,10 @@ footer{
 </div>
 
 <script>
-
 let maxDateString = "";
 
 window.onload = function() {
     let today = new Date();
-
     let yyyy = today.getFullYear();
     let mm = String(today.getMonth() + 1).padStart(2, '0');
     let dd = String(today.getDate()).padStart(2, '0');
@@ -241,77 +243,107 @@ window.onload = function() {
 
     document.getElementById("startDate").min = minDateString;
     document.getElementById("startDate").max = maxDateString;
-
     document.getElementById("endDate").min = minDateString;
     document.getElementById("endDate").max = maxDateString;
 };
 
-function updateEndLimit() {
+function updateDateLimits() {
     let startDate = document.getElementById("startDate").value;
-    document.getElementById("endDate").min = startDate;
+    let endDateField = document.getElementById("endDate");
+    
+    // Das Enddatum kann nicht vor dem Startdatum liegen
+    endDateField.min = startDate;
+    
+    // Falls das aktuelle Enddatum plötzlich vor dem neuen Startdatum liegt, zurücksetzen
+    if (endDateField.value && endDateField.value < startDate) {
+        endDateField.value = startDate;
+    }
+    
+    calculateLivePrice();
 }
 
-function login() {
-    document.getElementById("loginPage").classList.add("hidden");
-    document.getElementById("bookingPage").classList.remove("hidden");
-}
-
-function reserveLocker() {
-
+function calculateLivePrice() {
     let startDateStr = document.getElementById("startDate").value;
     let endDateStr = document.getElementById("endDate").value;
+    let previewBox = document.getElementById("pricePreview");
 
     if (!startDateStr || !endDateStr) {
-        alert("Bitte beide Daten auswählen.");
+        previewBox.classList.add("hidden");
         return;
     }
 
     let start = new Date(startDateStr);
     let end = new Date(endDateStr);
-    let today = new Date();
-    let maxAllowed = new Date(maxDateString);
+    
+    if (end >= start) {
+        let diff = end - start;
+        let days = Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+        let totalPrice = (days * 0.5).toFixed(2);
 
+        document.getElementById("previewDays").innerText = days;
+        document.getElementById("previewPrice").innerText = totalPrice.replace('.', ',');
+        previewBox.classList.remove("hidden");
+    } else {
+        previewBox.classList.add("hidden");
+    }
+}
+
+function login() {
+    let user = document.getElementById("username").value.trim();
+    let pass = document.getElementById("password").value.trim();
+
+    if (user === "" || pass === "") {
+        alert("Bitte Benutzernamen und Passwort eingeben.");
+        return;
+    }
+
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("bookingPage").classList.remove("hidden");
+}
+
+// Hilfsfunktion für deutsches Datumsformat (DD.MM.YYYY)
+function formatDateDE(dateStr) {
+    if(!dateStr) return "";
+    let parts = dateStr.split("-");
+    return parts[2] + "." + parts[1] + "." + parts[0];
+}
+
+function reserveLocker() {
+    let startDateStr = document.getElementById("startDate").value;
+    let endDateStr = document.getElementById("endDate").value;
+
+    if (!startDateStr || !endDateStr) {
+        alert("Bitte wählen Sie ein Start- und Enddatum aus.");
+        return;
+    }
+
+    let start = new Date(startDateStr);
+    let end = new Date(endDateStr);
+    
     start.setHours(0,0,0,0);
     end.setHours(0,0,0,0);
-    today.setHours(0,0,0,0);
-    maxAllowed.setHours(0,0,0,0);
-
-    if (start < today || end < today) {
-        alert("Keine Vergangenheit erlaubt.");
-        return;
-    }
-
-    if (start > maxAllowed || end > maxAllowed) {
-        alert("Maximal 2 Jahre erlaubt.");
-        return;
-    }
 
     if (end < start) {
-        alert("Enddatum falsch.");
+        alert("Das Enddatum darf nicht vor dem Startdatum liegen.");
         return;
     }
 
-    // Tage berechnen
     let diff = end - start;
     let days = Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
-
-    // Preis
     let totalPrice = (days * 0.5).toFixed(2);
 
-    // Zufall
+    // Zufällige Spind-Zuweisung
     let lockerNumber = Math.floor(Math.random() * 20) + 1;
     let lockerPin = Math.floor(1000 + Math.random() * 9000);
 
-    // Ausgabe
+    // Werte ins Result-UI schreiben
     document.getElementById("lockerNumber").innerText = lockerNumber;
     document.getElementById("lockerPin").innerText = lockerPin;
-
-    document.getElementById("reservedPeriod").innerText =
-        startDateStr + " bis " + endDateStr;
-
+    document.getElementById("reservedPeriod").innerText = formatDateDE(startDateStr) + " bis " + formatDateDE(endDateStr);
     document.getElementById("totalDays").innerText = days;
-    document.getElementById("totalPrice").innerText = totalPrice;
+    document.getElementById("totalPrice").innerText = totalPrice.replace('.', ',');
 
+    // Seiten umschalten
     document.getElementById("bookingPage").classList.add("hidden");
     document.getElementById("resultPage").classList.remove("hidden");
 }
@@ -319,8 +351,6 @@ function reserveLocker() {
 function logout() {
     location.reload();
 }
-
 </script>
-
 </body>
 </html>
